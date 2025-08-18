@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kencan Afiliasi</title>
+    <!-- Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Container untuk kartu */
+        .card-container {
+            position: relative;
+            width: 100%;
+            max-width: 360px;
+            height: 520px;
+            perspective: 1000px;
+        }
+
+        /* Kartu profil */
+        .profile-card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.5s;
+            transform-origin: 50% 100%;
+            cursor: grab;
+            touch-action: none; /* Mencegah masalah scroll pada touch device */
+        }
+        
+        /* Animasi geser dan putar */
+        .swipe-right {
+            transform: translateX(200%) rotate(20deg);
+            opacity: 0;
+        }
+
+        .swipe-left {
+            transform: translateX(-200%) rotate(-20deg);
+            opacity: 0;
+        }
+
+        .swipe-up {
+            transform: translateY(-200%) scale(0.8);
+            opacity: 0;
+        }
+
+        /* Animasi pop-up pesan */
+        @keyframes message-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        .message-box {
+            animation: message-pop 1s ease-in-out forwards;
+        }
+
+        /* Style untuk tombol */
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Tombol Edit/Ubah Tautan */
+        .edit-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #fff;
+            border-radius: 9999px;
+            padding: 8px 16px;
+            box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s;
+            z-index: 10;
+        }
+
+        .edit-btn:hover {
+            background-color: #f0f2f5;
+        }
+
+        /* Modal untuk edit */
+        .modal {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 20;
+        }
+
+        /* Kustom scrollbar untuk form di modal */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
+    <div class="max-w-md w-full p-4">
+        <!-- Tombol untuk mengubah foto dan link -->
+        <button id="editBtn" class="edit-btn font-medium text-sm text-gray-700">
+            Ubah Tautan & Foto
+        </button>
+
+        <!-- Container untuk kartu-kartu -->
+        <div class="card-container">
+            <!-- Kartu profil utama -->
+            <div id="profileCard" class="profile-card">
+                <!-- Gambar profil -->
+                <div id="image-container" class="w-full h-3/4 bg-gray-200">
+                    <img id="profileImage" src="" alt="Profil Pengguna" class="w-full h-full object-cover">
+                </div>
+                <!-- Informasi profil -->
+                <div class="p-5">
+                    <h2 id="profileNameAge" class="text-3xl font-semibold text-gray-800">Nama, Usia</h2>
+                    <p id="profileBio" class="text-lg text-gray-600 mt-2 line-clamp-3">Biografi...</p>
+                </div>
+            </div>
+
+            <!-- Pesan pop-up untuk "Like" atau "Nope" -->
+            <div id="messageBox" class="message-box absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden">
+                <div id="messageText" class="px-6 py-3 rounded-full text-white font-bold text-2xl uppercase"></div>
+            </div>
+        </div>
+
+        <!-- Tombol-tombol kontrol -->
+        <div class="flex justify-center items-center gap-4 mt-8 w-full max-w-sm">
+            <button id="nopeBtn" class="control-btn bg-white text-red-500 hover:text-red-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <button id="affiliateBtn" class="control-btn bg-white text-yellow-500 hover:text-yellow-600 w-16 h-16">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+            </button>
+            <button id="likeBtn" class="control-btn bg-white text-green-500 hover:text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal untuk mengedit data -->
+    <div id="modal" class="modal fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto custom-scroll">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">Ubah Profil & Tautan</h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            
+            <p class="text-gray-600 mb-4 text-sm">Anda dapat mengubah data profil, URL foto, dan tautan afiliasi di sini. Setelah selesai, klik tombol 'Simpan' di bagian bawah.</p>
+            
+            <div id="profilesForm" class="space-y-6">
+                <!-- Form akan diisi oleh JavaScript -->
+            </div>
+            
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="saveChangesBtn" class="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data profil yang dapat Anda ubah
+        // Anda bisa menambahkan atau menghapus objek profil di sini
+        let profilesData = [
+            {
+                name: "Lisa",
+                age: 24,
+                bio: "Suka membaca buku, minum kopi, dan jalan-jalan di alam terbuka. Mencari teman mengobrol yang seru dan jujur.",
+                image: "https://placehold.co/400x500/A8A8A8/ffffff?text=LISA",
+                affiliateLink: "https://link-afiliasi-anda-1.com"
+            },
+            {
+                name: "Sarah",
+                age: 22,
+                bio: "Seorang seniman dan pecinta kucing. Selalu tertarik dengan hal-hal baru dan ingin mencoba banyak hal dalam hidup.",
+                image: "https://placehold.co/400x500/A8A8A8/ffffff?text=SARAH",
+                affiliateLink: "https://link-afiliasi-anda-2.com"
+            },
+            {
+                name: "Jessica",
+                age: 26,
+                bio: "Penggemar film horor dan musik indie. Sedang mencari seseorang yang memiliki selera humor yang baik.",
+                image: "https://placehold.co/400x500/A8A8A8/ffffff?text=JESSICA",
+                affiliateLink: "https://link-afiliasi-anda-3.com"
+            },
+            {
+                name: "Maria",
+                age: 23,
+                bio: "Baru pindah ke kota ini dan ingin menjelajahi tempat-tempat baru. Mari kita cari tempat makan enak bersama!",
+                image: "https://placehold.co/400x500/A8A8A8/ffffff?text=MARIA",
+                affiliateLink: "https://link-afiliasi-anda-4.com"
+            },
+            // Tambahkan lebih banyak profil di sini...
+        ];
+
+        // --- Variabel dan Elemen DOM ---
+        const profileCard = document.getElementById('profileCard');
+        const profileImage = document.getElementById('profileImage');
+        const profileNameAge = document.getElementById('profileNameAge');
+        const profileBio = document.getElementById('profileBio');
+        const nopeBtn = document.getElementById('nopeBtn');
+        const likeBtn = document.getElementById('likeBtn');
+        const affiliateBtn = document.getElementById('affiliateBtn');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const editBtn = document.getElementById('editBtn');
+        const modal = document.getElementById('modal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const profilesForm = document.getElementById('profilesForm');
+        const saveChangesBtn = document.getElementById('saveChangesBtn');
+
+        let currentIndex = 0;
+        let isSwiping = false;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let currentY = 0;
+
+        // --- Fungsi Utama ---
+
+        // Fungsi untuk menampilkan profil saat ini
+        function showProfile(index) {
+            if (index >= profilesData.length) {
+                // Jika sudah habis, kembali ke awal
+                currentIndex = 0;
+            }
+            const profile = profilesData[currentIndex];
+            profileImage.src = profile.image;
+            profileNameAge.textContent = `${profile.name}, ${profile.age}`;
+            profileBio.textContent = profile.bio;
+            profileImage.onerror = function() {
+                this.src = `https://placehold.co/400x500/A8A8A8/ffffff?text=Error`;
+            };
+        }
+
+        // Fungsi untuk menggeser kartu
+        function swipeCard(direction) {
+            // Tampilkan pesan
+            messageBox.style.display = 'block';
+            messageBox.classList.remove('hidden');
+
+            if (direction === 'like') {
+                profileCard.classList.add('swipe-right');
+                messageText.textContent = 'LIKE';
+                messageText.className = 'px-6 py-3 rounded-full bg-green-500 text-white font-bold text-2xl uppercase';
+            } else if (direction === 'nope') {
+                profileCard.classList.add('swipe-left');
+                messageText.textContent = 'NOPE';
+                messageText.className = 'px-6 py-3 rounded-full bg-red-500 text-white font-bold text-2xl uppercase';
+            } else if (direction === 'superlike') {
+                profileCard.classList.add('swipe-up');
+                messageText.textContent = 'SUPER LIKE';
+                messageText.className = 'px-6 py-3 rounded-full bg-yellow-500 text-white font-bold text-2xl uppercase';
+            }
+
+            // Atur ulang kartu setelah animasi selesai
+            setTimeout(() => {
+                profileCard.classList.remove('swipe-right', 'swipe-left', 'swipe-up');
+                profileCard.style.transform = '';
+                messageBox.classList.add('hidden');
+                currentIndex++;
+                showProfile(currentIndex);
+            }, 500);
+        }
+
+        // --- Event Listener ---
+
+        // Tombol like
+        likeBtn.addEventListener('click', () => swipeCard('like'));
+
+        // Tombol nope
+        nopeBtn.addEventListener('click', () => swipeCard('nope'));
+
+        // Tombol Super Like (mengarah ke tautan afiliasi)
+        affiliateBtn.addEventListener('click', () => {
+            const currentProfile = profilesData[currentIndex];
+            if (currentProfile && currentProfile.affiliateLink) {
+                window.open(currentProfile.affiliateLink, '_blank');
+                swipeCard('superlike');
+            } else {
+                alert('Tautan afiliasi tidak ditemukan!');
+            }
+        });
+
+        // --- Logika Geser (Swipe) ---
+        profileCard.addEventListener('mousedown', startSwipe);
+        profileCard.addEventListener('touchstart', startSwipe);
+        document.addEventListener('mousemove', moveSwipe);
+        document.addEventListener('touchmove', moveSwipe);
+        document.addEventListener('mouseup', endSwipe);
+        document.addEventListener('touchend', endSwipe);
+
+        function startSwipe(e) {
+            isSwiping = true;
+            startX = e.clientX || e.touches[0].clientX;
+            startY = e.clientY || e.touches[0].clientY;
+            profileCard.style.transition = 'none'; // Nonaktifkan transisi saat geser
+        }
+
+        function moveSwipe(e) {
+            if (!isSwiping) return;
+            currentX = e.clientX || e.touches[0].clientX;
+            currentY = e.clientY || e.touches[0].clientY;
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+
+            // Atur transformasi rotasi dan posisi kartu
+            const rotation = deltaX / 20;
+            profileCard.style.transform = `translate(${deltaX}px, ${deltaY}px) rotate(${rotation}deg)`;
+        }
+
+        function endSwipe(e) {
+            if (!isSwiping) return;
+            isSwiping = false;
+            profileCard.style.transition = 'transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.5s'; // Aktifkan kembali transisi
+
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+
+            // Ambil keputusan berdasarkan seberapa jauh digeser
+            if (deltaX > 80) {
+                swipeCard('like'); // Geser ke kanan untuk 'like'
+            } else if (deltaX < -80) {
+                swipeCard('nope'); // Geser ke kiri untuk 'nope'
+            } else if (deltaY < -80) {
+                swipeCard('superlike'); // Geser ke atas untuk 'superlike'
+            } else {
+                // Kembali ke posisi semula
+                profileCard.style.transform = '';
+            }
+        }
+
+        // --- Modal Edit ---
+        function renderProfilesForm() {
+            profilesForm.innerHTML = '';
+            profilesData.forEach((profile, index) => {
+                const profileDiv = document.createElement('div');
+                profileDiv.classList.add('bg-gray-50', 'p-4', 'rounded-lg', 'shadow-inner');
+                profileDiv.innerHTML = `
+                    <div class="flex items-center gap-3 mb-2">
+                        <img src="${profile.image}" class="w-12 h-12 rounded-full object-cover border" onerror="this.src='https://placehold.co/400x500/A8A8A8/ffffff?text=Error'">
+                        <h4 class="font-medium text-lg text-gray-700">Profil ${index + 1}</h4>
+                    </div>
+                    <label class="block mb-2">
+                        <span class="text-gray-700 font-medium">Nama:</span>
+                        <input type="text" data-field="name" data-index="${index}" value="${profile.name}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                    </label>
+                    <label class="block mb-2">
+                        <span class="text-gray-700 font-medium">Usia:</span>
+                        <input type="number" data-field="age" data-index="${index}" value="${profile.age}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                    </label>
+                    <label class="block mb-2">
+                        <span class="text-gray-700 font-medium">URL Foto:</span>
+                        <input type="text" data-field="image" data-index="${index}" value="${profile.image}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                    </label>
+                    <label class="block">
+                        <span class="text-gray-700 font-medium">Tautan Afiliasi:</span>
+                        <input type="text" data-field="affiliateLink" data-index="${index}" value="${profile.affiliateLink}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                    </label>
+                `;
+                profilesForm.appendChild(profileDiv);
+            });
+        }
+
+        editBtn.addEventListener('click', () => {
+            renderProfilesForm();
+            modal.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        saveChangesBtn.addEventListener('click', () => {
+            const inputs = profilesForm.querySelectorAll('input');
+            inputs.forEach(input => {
+                const index = parseInt(input.dataset.index);
+                const field = input.dataset.field;
+                if (profilesData[index]) {
+                    if (field === 'age') {
+                        profilesData[index][field] = parseInt(input.value) || 0;
+                    } else {
+                        profilesData[index][field] = input.value;
+                    }
+                }
+            });
+            modal.classList.add('hidden');
+            // Muat ulang profil dengan data yang baru
+            currentIndex = 0;
+            showProfile(currentIndex);
+        });
+
+        // Tampilkan profil pertama saat halaman dimuat
+        window.onload = () => {
+            showProfile(currentIndex);
+        };
+    </script>
+</body>
+</html>
